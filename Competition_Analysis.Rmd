@@ -1,0 +1,101 @@
+---
+title: "Competition_Analysis"
+author: "Nathan Brandt"
+date: "2/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###This code is designed for use with the Accuri flow cytometer, which is equiped with the following lasers and filters
+* Blue laser (488 nm)
+  + FL1 filter = 514/20nm   GFP
+  + FL3 filter = 575/25nm   YFP
+
+* Yellow/green laser (552 nm)
+  + FL2 filter = 610/20nm   mCherry, dtomato
+  + FL4 filter = 586/15nm   DsRed
+  
+#1) Multi-samples over time maintained at steady-stat in Ammonium-Sulfate Limited Media in the Mini-Stats analyzed on the Accuri.
+#    Competitions-
+#     Vessel 01 - R1-11 : Single Colony 11 from evloved population R1
+#     Vessel 02 - R2-5 : Single Colony 5 from evloved population R2
+#     Vessel 03 - R3-10 : Single Colony 10 from evloved population R3
+#     Vessel 04 - GAT1-1 : GAT1-1 
+#     All vs. DGY500
+
+******
+##Step 1: Load relevant libraries 
+
+```{r}
+# This is a function that just makes sure you have a package, or installs it for you without prompting
+
+requireInstall <- function(packageName,isBioconductor=F) {
+  if ( !try(require(packageName,character.only=T)) ) {
+    print(paste0("You don't have ",packageName," accessible, ",
+      "I'm gonna install it"))
+    if (isBioconductor) {
+      source("http://bioconductor.org/biocLite.R")                        
+      biocLite(packageName)                                                 
+    } else {
+      install.packages("packageName", repos = "http://cran.us.r-project.org")
+    }
+  }
+  return(1)
+}
+
+#Load libraries
+requireInstall("flowCore",isBioconductor=T)
+requireInstall("tidyverse")
+requireInstall("googlesheets")
+```
+
+###Step 2: Read in all .fcs files in current directory and a sample sheet that contains four columns with 
+* column1 = Well
+* column2 = Experiment
+* column3 = Strain(s)
+
+```{r}
+path = "/Users/Brandt/Google Drive/GAT1 evolution paper/Additional_Exp/Accuri_Data/"
+folder_list <- gs_read(ss = gs_title("Experiment_Folder_List"))
+
+for(x in 1:length(folder_list$Folders)) {
+  if(x <= 1) {
+    folder = folder_list[x,]
+    sample_filename = paste("SampleSheet_", folder, sep = "" )
+    
+    sample_sheet <- gs_read(ss = gs_title(sample_filename))
+
+    flowData <- read.flowSet(path = paste(path, folder, sep = ""), pattern = ".fcs", alter.names=TRUE)
+
+    #Adds unique name to the flowFrames and adds sample sheet data to the pData of the flowset
+    sampleNames(flowData) <- sample_sheet$Experiment
+    pData(flowData)$Well <- sample_sheet$Well
+    pData(flowData)$Strain <- sample_sheet$Strain
+  } else {
+    folder = folder_list[x,]
+    sample_filename = paste("SampleSheet_", folder, sep = "" )
+    
+    sample_sheet <- gs_read(ss = gs_title(sample_filename))
+
+    flowData_temp <- read.flowSet(path = paste(path, folder, sep = ""), pattern = ".fcs", alter.names=TRUE)
+
+    #Adds unique name to the flowFrames and adds sample sheet data to the pData of the flowset
+    sampleNames(flowData_temp) <- sample_sheet$Experiment
+    pData(flowData_temp)$Well <- sample_sheet$Well
+    pData(flowData_temp)$Strain <- sample_sheet$Strain
+    #Combine FlowSets
+    flowData <- rbind2(flowData, flowData_temp)
+  }
+
+}
+```
+
+#Transfer data into a dataframe and produce summary stats
+```{r}
+#Summary Statistics of Normalized Filtered Data
+#Move filtered data into a dataframe
+filter.data <- data.frame(FSC.A=NA,SSC.A=NA,FL1.A=NA,WELL=NA,STRAIN=NA)
+stats.data <- data.frame(WELL=NA,STRAIN=NA,COUNT=NA,MEDIAN=NA,MEAN=NA,SD=NA,VAR=NA)

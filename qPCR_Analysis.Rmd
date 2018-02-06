@@ -1,0 +1,54 @@
+---
+title: "qPCR_Analysis"
+author: "Nathan Brandt"
+date: "2/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+******
+##Step 1: Load relevant libraries 
+
+```{r}
+# This is a function that just makes sure you have a package, or installs it for you without prompting
+
+requireInstall <- function(packageName,isBioconductor=F) {
+  if ( !try(require(packageName,character.only=T)) ) {
+    print(paste0("You don't have ",packageName," accessible, ",
+      "I'm gonna install it"))
+    if (isBioconductor) {
+      source("http://bioconductor.org/biocLite.R")                        
+      biocLite(packageName)                                                 
+    } else {
+      install.packages("packageName", repos = "http://cran.us.r-project.org")
+    }
+  }
+  return(1)
+}
+
+#Load libraries
+requireInstall("tidyverse")
+requireInstall("googlesheets")
+
+```
+
+###Step 2: Read in Data
+
+```{r}
+path = "/Users/Brandt/Google Drive/GAT1 evolution paper/Additional_Exp/qPCR_Data/"
+filename = "MEP1Quant_Plate1_01232018_CP_Values_2ndDev.txt"
+
+
+data <- select(read_tsv(paste(path, filename, sep = ""), skip = 1, col_names = TRUE), c("Name","Cp"))
+
+
+#Need to replace Sample # with Actual Name
+#Type in from LabBook
+#Figure out a way to read files from a folder to get name_list????
+#Or might need another master list to control flow in
+
+```
+
