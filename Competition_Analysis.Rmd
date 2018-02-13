@@ -48,8 +48,10 @@ requireInstall <- function(packageName,isBioconductor=F) {
 
 #Load libraries
 requireInstall("flowCore",isBioconductor=T)
+requireInstall("flowViz",isBioconductor=T)
 requireInstall("tidyverse")
 requireInstall("googlesheets")
+requireInstall("ggcyto")
 ```
 
 ###Step 2: Read in all .fcs files in current directory and a sample sheet that contains four columns with 
@@ -60,6 +62,7 @@ requireInstall("googlesheets")
 ```{r}
 path = "/Users/Brandt/Google Drive/GAT1 evolution paper/Additional_Exp/Accuri_Data/"
 folder_list <- gs_read(ss = gs_title("Experiment_Folder_List"))
+#exp_name <- "MEP2_CNV_Competition"
 
 for(x in 1:length(folder_list$Folders)) {
   if(x <= 1) {
@@ -72,6 +75,7 @@ for(x in 1:length(folder_list$Folders)) {
 
     #Adds unique name to the flowFrames and adds sample sheet data to the pData of the flowset
     sampleNames(flowData) <- sample_sheet$Experiment
+    pData(flowData)$name <- sample_sheet$Experiment
     pData(flowData)$Well <- sample_sheet$Well
     pData(flowData)$Strain <- sample_sheet$Strain
   } else {
@@ -84,6 +88,7 @@ for(x in 1:length(folder_list$Folders)) {
 
     #Adds unique name to the flowFrames and adds sample sheet data to the pData of the flowset
     sampleNames(flowData_temp) <- sample_sheet$Experiment
+    pData(flowData_temp)$name <- sample_sheet$Experiment
     pData(flowData_temp)$Well <- sample_sheet$Well
     pData(flowData_temp)$Strain <- sample_sheet$Strain
     #Combine FlowSets
@@ -91,11 +96,44 @@ for(x in 1:length(folder_list$Folders)) {
   }
 
 }
+
+#write.flowSet(flowData, outdir = path, exp_name)
 ```
 
-#Transfer data into a dataframe and produce summary stats
-```{r}
-#Summary Statistics of Normalized Filtered Data
-#Move filtered data into a dataframe
-filter.data <- data.frame(FSC.A=NA,SSC.A=NA,FL1.A=NA,WELL=NA,STRAIN=NA)
-stats.data <- data.frame(WELL=NA,STRAIN=NA,COUNT=NA,MEDIAN=NA,MEAN=NA,SD=NA,VAR=NA)
+#Step 3: apply filters to data and generate plots showing the effect on filtering
+```{r Application of Gates}
+##Subset the data by applying sequential gates##
+#Need to load gates produced by gating.R
+samples.num <- length(flowData)
+total <- fsApply(flowData, each_col, length)[1:samples.num]
+
+#apply doublet gate
+flowData.singlets <- Subset(flowData, pg.singlets) 
+fsApply(flowData.singlets, each_col, length)[1:samples.num]
+singlets <- fsApply(flowData.singlets, each_col, length)[1:samples.num]
+barplot(singlets/total, ylim=c(0,1), ylab = "Proportion singlet cells", las=2, cex.names = 0.5, names.arg=sampleNames(flowData))
+
+#apply debris gate
+filteredData <- Subset(flowData.singlets, pg.nondebris) 
+fsApply(filteredData, each_col, length)[1:samples.num]
+non.debris <- fsApply(filteredData, each_col, length)[1:samples.num]
+barplot(non.debris/total, ylim=c(0,1), ylab = "Proportion singlet and nondebris cells", las=2, cex.names = 0.5, names.arg=sampleNames(flowData))
+
+#########
+#filteredData is the variable name for the data filtered of doublets and debris that are used for all subsequent analyses
+##########
+
+#this gate defines nongfp cells
+gfp.neg <- Subset(filteredData, pg.nongfp) 
+fsApply(gfp.neg, each_col, length)[1:samples.num]
+non.gfp <- fsApply(gfp.neg, each_col, length)[1:samples.num]
+barplot(non.gfp/non.debris, ylim=c(0,1), ylab = "Proportion cells with no GFP", las=2, cex.names = 0.5, names.arg=sampleNames(flowData))
+
+#this gate defines gfp cells
+gfp.pos <- Subset(filteredData, pg.gfp) 
+fsApply(gfp.pos, each_col, length)[1:samples.num]
+gfp.cells <- fsApply(gfp.pos, each_col, length)[1:samples.num]
+barplot(gfp.cells/non.debris, ylim=c(0,1), ylab = "Proportion cells with GFP", las=2, cex.names = 0.5, names.arg=sampleNames(flowData))
+
+```
+
