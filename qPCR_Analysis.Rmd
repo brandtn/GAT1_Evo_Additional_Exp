@@ -39,16 +39,19 @@ requireInstall("googlesheets")
 
 ```{r}
 path = "/Users/Brandt/Google Drive/GAT1 evolution paper/Additional_Exp/qPCR_Data/"
-filename = "MEP1Quant_Plate1_01232018_CP_Values_2ndDev.txt"
+filename = "MEP2_CNV_Expression_2nd_02122018.txt"
+sample_filename = "MEP2_CNV_Expression_2nd_02122018_SampleSheet"
+
 
 
 data <- select(read_tsv(paste(path, filename, sep = ""), skip = 1, col_names = TRUE), c("Name","Cp"))
+sample_sheet <- gs_read(ss = gs_title(sample_filename))
 
+data <- left_join(sample_sheet, data, by = c("Sample_Number" = "Name"))
 
-#Need to replace Sample # with Actual Name
-#Type in from LabBook
 #Figure out a way to read files from a folder to get name_list????
 #Or might need another master list to control flow in
+#Create qPCR Sample Sheet Template
 
 ```
 
