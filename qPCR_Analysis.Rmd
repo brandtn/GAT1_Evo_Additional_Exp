@@ -44,10 +44,8 @@ sample_filename = "MEP2_CNV_Expression_2nd_02122018_SampleSheet"
 
 
 
-data <- select(read_tsv(paste(path, filename, sep = ""), skip = 1, col_names = TRUE), c("Name","Cp"))
-sample_sheet <- gs_read(ss = gs_title(sample_filename))
+data <- left_join(gs_read(ss = gs_title(sample_filename)), select(read_tsv(paste(path, filename, sep = ""), skip = 1, col_names = TRUE), c("Name","Cp")), by = c("Sample_Number" = "Name"))
 
-data <- left_join(sample_sheet, data, by = c("Sample_Number" = "Name"))
 
 #Figure out a way to read files from a folder to get name_list????
 #Or might need another master list to control flow in
